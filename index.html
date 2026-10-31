@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>存在 · 索引</title>
+<style>
+  :root {
+    --bg: #06050a;
+    --ink: #f4f2f8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; min-height: 100%; }
+
+  /* 隐藏滚动条（保留滚动能力） */
+  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  html { scrollbar-width: none; -ms-overflow-style: none; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    min-height: 100vh;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── 背景光斑 ── */
+  .bg-light {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+    transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  .bg-light::before,
+  .bg-light::after {
+    content: '';
+    position: absolute;
+    width: 75vmin;
+    height: 75vmin;
+    border-radius: 50%;
+    filter: blur(130px);
+  }
+  .bg-light::before {
+    background: radial-gradient(circle, #6a4fb0, transparent 70%);
+    top: -22%;
+    left: -12%;
+    opacity: 0.32;
+    animation: drift1 26s ease-in-out infinite alternate;
+  }
+  .bg-light::after {
+    background: radial-gradient(circle, #b04f6a, transparent 70%);
+    bottom: -28%;
+    right: -15%;
+    opacity: 0.22;
+    animation: drift2 32s ease-in-out infinite alternate;
+  }
+  @keyframes drift1 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(14vw, 9vh) scale(1.1); }
+  }
+  @keyframes drift2 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-12vw, -8vh) scale(1.08); }
+  }
+
+  /* ── 场景 ── */
+  .scene {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    padding: 7vh 6vw 6vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    perspective: 2000px;
+    perspective-origin: 50% 45%;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 1020px;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 5.5vh, 4.2rem);
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  /* ── 头部 ── */
+  .masthead {
+    text-align: center;
+    opacity: 0;
+    transform: translateY(28px);
+    animation: rise 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .eyebrow {
+    font-family: 'Arial Black', 'Helvetica Neue', Impact, sans-serif;
+    font-weight: 900;
+    font-size: clamp(0.52rem, 1.1vw, 0.66rem);
+    letter-spacing: 0.52em;
+    text-indent: 0.52em;
+    text-transform: uppercase;
+    color: rgba(244, 242, 248, 0.3);
+    margin-bottom: clamp(1.4rem, 3vh, 2rem);
+  }
+
+  .masthead h1 {
+    font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+    font-weight: 900;
+    font-size: clamp(5rem, 17vw, 12rem);
+    letter-spacing: 0.12em;
+    text-indent: 0.12em;
+    line-height: 0.9;
+    background: linear-gradient(180deg, #ffffff 0%, #d4d0e0 45%, #8a849c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    filter:
+      drop-shadow(0 3px 0 rgba(50, 45, 72, 0.55))
+      drop-shadow(0 6px 0 rgba(35, 30, 55, 0.4))
+      drop-shadow(0 22px 55px rgba(165, 145, 230, 0.28));
+  }
+
+  .subtitle {
+    margin-top: clamp(1.1rem, 2.5vh, 1.6rem);
+    font-family: 'Arial Black', 'Helvetica Neue', Impact, sans-serif;
+    font-weight: 900;
+    font-size: clamp(0.48rem, 0.95vw, 0.6rem);
+    letter-spacing: 0.62em;
+    text-indent: 0.62em;
+    text-transform: uppercase;
+    color: rgba(244, 242, 248, 0.2);
+  }
+
+  /* ── 网格 ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(1.5rem, 2.9vw, 2.1rem);
+    transform-style: preserve-3d;
+  }
+
+  /* ═══════════════════════════════════════════
+     卡片容器 —— 链接本体，固定命中区，不参与变形
+     ═══════════════════════════════════════════ */
+  .card-wrap {
+    display: block;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    /* 12px 内边距 + 负外边距 = 命中区外扩 12px，抵消卡片视觉放大溢出 */
+    padding: 12px;
+    margin: -12px;
+    opacity: 0;
+    transform: translateY(60px) rotateX(-10deg);
+    transition:
+      opacity 1.3s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+  }
+  .card-wrap.in {
+    opacity: 1;
+    /* identity 变换，命中区稳定 */
+    transform: translateY(0) rotateX(0deg);
+  }
+
+  /* 卡片初始 Z 深度差 */
+  .card-wrap:nth-child(1) { --z: 44px; }
+  .card-wrap:nth-child(2) { --z: 12px; }
+  .card-wrap:nth-child(3) { --z: -20px; }
+  .card-wrap:nth-child(4) { --z: -52px; }
+
+  /* ═══════════════════════════════════════════
+     卡片视觉层 —— 只负责好看，pointer-events: none
+     ═══════════════════════════════════════════ */
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    aspect-ratio: 5 / 3.35;
+    width: 100%;
+    padding: clamp(1.3rem, 2.4vw, 2rem);
+    background: rgba(255, 255, 255, 0.022);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+    transform-style: preserve-3d;
+    transform:
+      translateZ(var(--z, 0px))
+      rotateX(var(--rx, 0deg))
+      rotateY(var(--ry, 0deg));
+    transition:
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.6s ease,
+      background 0.6s ease,
+      box-shadow 0.6s ease;
+    will-change: transform;
+    /* 关键：视觉层不参与鼠标命中 */
+    pointer-events: none;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 42%);
+    pointer-events: none;
+    opacity: 0.65;
+    transition: opacity 0.6s ease;
+  }
+
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      115deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.09) 50%,
+      transparent 62%
+    );
+    pointer-events: none;
+    transition: left 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .spotlight {
+    position: absolute;
+    left: 50%;
+    top: 55%;
+    width: 130%;
+    height: 130%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at center, var(--c), transparent 52%);
+    opacity: 0.07;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+    z-index: 0;
+  }
+
+  .bignum {
+    position: absolute;
+    right: -0.5rem;
+    bottom: -3.5rem;
+    font-family: 'Arial Black', 'Helvetica Neue', Impact, sans-serif;
+    font-weight: 900;
+    font-size: clamp(6.5rem, 13vw, 11rem);
+    line-height: 0.8;
+    letter-spacing: -0.05em;
+    color: var(--c);
+    opacity: 0.08;
+    pointer-events: none;
+    transition:
+      opacity 0.7s ease,
+      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 0;
+    user-select: none;
+  }
+
+  .idx {
+    position: relative;
+    z-index: 2;
+    font-family: 'Arial Black', 'Helvetica Neue', Impact, sans-serif;
+    font-weight: 900;
+    font-size: 0.55rem;
+    letter-spacing: 0.38em;
+    color: var(--c);
+    opacity: 0.68;
+    transition: opacity 0.6s ease;
+    transform: translateZ(8px);
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    transform: translateZ(10px);
+  }
+
+  .title {
+    font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.15rem, 2.1vw, 1.5rem);
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    color: #f8f6fb;
+    transition: text-shadow 0.7s ease;
+  }
+
+  .en {
+    margin-top: 0.5rem;
+    font-family: 'Arial Black', 'Helvetica Neue', Impact, sans-serif;
+    font-weight: 900;
+    font-size: 0.48rem;
+    letter-spacing: 0.38em;
+    text-transform: uppercase;
+    color: rgba(244, 242, 248, 0.26);
+    transition: color 0.6s ease;
+  }
+
+  .desc {
+    margin-top: 0.85rem;
+    font-size: clamp(0.72rem, 1.25vw, 0.82rem);
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+    color: rgba(244, 242, 248, 0.4);
+    transition: color 0.6s ease;
+  }
+
+  .foot {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
+    font-weight: 900;
+    font-size: 0.52rem;
+    letter-spacing: 0.35em;
+    color: rgba(244, 242, 248, 0.28);
+    transition: color 0.6s ease;
+    transform: translateZ(8px);
+  }
+
+  .foot .line {
+    width: 16px;
+    height: 1.5px;
+    background: currentColor;
+    opacity: 0.5;
+    transition:
+      width 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.5s ease;
+  }
+
+  /* ═══ 悬停状态（JS 切换 .hover，命中稳定） ═══ */
+  .card-wrap.hover { --z: 90px; }
+
+  .card-wrap.hover .card {
+    border-color: var(--c);
+    background: rgba(255, 255, 255, 0.038);
+    box-shadow:
+      0 40px 90px -35px rgba(0, 0, 0, 0.9),
+      0 0 120px -45px var(--c);
+  }
+  .card-wrap.hover .card::before { opacity: 1; }
+  .card-wrap.hover .card::after { left: 120%; }
+  .card-wrap.hover .spotlight { opacity: 0.17; }
+  .card-wrap.hover .bignum {
+    opacity: 0.2;
+    transform: translateY(-6px) scale(1.05);
+  }
+  .card-wrap.hover .idx { opacity: 1; }
+  .card-wrap.hover .title { text-shadow: 0 0 32px var(--c); }
+  .card-wrap.hover .en { color: rgba(244, 242, 248, 0.55); }
+  .card-wrap.hover .desc { color: rgba(244, 242, 248, 0.72); }
+  .card-wrap.hover .foot { color: var(--c); }
+  .card-wrap.hover .foot .line { width: 44px; opacity: 1; }
+
+  /* ═══ 按下反馈 ═══ */
+  .card-wrap:active .card {
+    transform:
+      translateZ(30px)
+      rotateX(var(--rx, 0deg))
+      rotateY(var(--ry, 0deg))
+      scale(0.972);
+    transition-duration: 0.12s;
+  }
+  .card-wrap:active .spotlight { opacity: 0.28; }
+  .card-wrap:active .bignum { opacity: 0.3; }
+
+  /* ── 页脚 ── */
+  .footer {
+    margin-top: clamp(2.2rem, 4.5vh, 3.6rem);
+    text-align: center;
+    font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
+    font-weight: 900;
+    font-size: 0.5rem;
+    letter-spacing: 0.65em;
+    text-indent: 0.65em;
+    color: rgba(244, 242, 248, 0.13);
+    transition: color 1.1s ease;
+    opacity: 0;
+    animation: rise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 1.9s forwards;
+  }
+  .footer:hover { color: rgba(244, 242, 248, 0.38); }
+
+  /* ── 响应式 ── */
+  @media (max-width: 700px) {
+    .scene { padding: 9vh 5vw 8vh; perspective: 1200px; }
+    .grid { grid-template-columns: 1fr; gap: 0.95rem; }
+    /* 移动端缩小命中缓冲，避免相邻卡片重叠 */
+    .card-wrap { padding: 5px; margin: -5px; }
+    .card-wrap:nth-child(n) { --z: 0px; }
+    .card { aspect-ratio: auto; min-height: 196px; }
+    .bignum { font-size: 7rem; bottom: -2.5rem; }
+    .masthead h1 { letter-spacing: 0.08em; text-indent: 0.08em; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-light" id="bgLight"></div>
+
+<div class="scene">
+  <div class="stage" id="stage">
+
+    <header class="masthead">
+      <div class="eyebrow">Existence · An Index</div>
+      <h1>存在</h1>
+      <div class="subtitle">Four Faces of Being</div>
+    </header>
+
+    <div class="grid">
+
+      <a class="card-wrap" href="https://blockrhapsody.github.io/jishu" style="--c:#ff5a6e">
+        <div class="card">
+          <div class="spotlight"></div>
+          <div class="bignum">01</div>
+          <div class="idx">01 · COUNTING</div>
+          <div class="content">
+            <div class="title">存在 · 计数</div>
+            <div class="en">Existence in Counting</div>
+            <div class="desc">每一次递增，都是对虚无的一次反驳。</div>
+          </div>
+          <div class="foot"><span class="line"></span><span>ENTER</span></div>
+        </div>
+      </a>
+
+      <a class="card-wrap" href="https://blockrhapsody.github.io/tianshu" style="--c:#e8b876">
+        <div class="card">
+          <div class="spotlight"></div>
+          <div class="bignum">02</div>
+          <div class="idx">02 · PIVOT</div>
+          <div class="content">
+            <div class="title">天枢</div>
+            <div class="en">Pivot of Heaven</div>
+            <div class="desc">时间不以人的意志流转，只以光的角度显形。</div>
+          </div>
+          <div class="foot"><span class="line"></span><span>ENTER</span></div>
+        </div>
+      </a>
+
+      <a class="card-wrap" href="https://blockrhapsody.github.io/guang" style="--c:#ffa86b">
+        <div class="card">
+          <div class="spotlight"></div>
+          <div class="bignum">03</div>
+          <div class="idx">03 · HOLD</div>
+          <div class="content">
+            <div class="title">按住</div>
+            <div class="en">Hold · Light</div>
+            <div class="desc">按住，直到你不再需要。光，是唯一的回应。</div>
+          </div>
+          <div class="foot"><span class="line"></span><span>ENTER</span></div>
+        </div>
+      </a>
+
+      <a class="card-wrap" href="https://blockrhapsody.github.io/huxi" style="--c:#9a86e6">
+        <div class="card">
+          <div class="spotlight"></div>
+          <div class="bignum">04</div>
+          <div class="idx">04 · BREATH</div>
+          <div class="content">
+            <div class="title">息</div>
+            <div class="en">Breath</div>
+            <div class="desc">你不需要学会呼吸，你只需要注意到你在呼吸。</div>
+          </div>
+          <div class="foot"><span class="line"></span><span>ENTER</span></div>
+        </div>
+      </a>
+
+    </div>
+
+    <footer class="footer">网页即存在 · 存在即网页</footer>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const stage   = document.getElementById('stage');
+  const bgLight = document.getElementById('bgLight');
+  const wraps   = Array.from(document.querySelectorAll('.card-wrap'));
+
+  /* ── 错峰入场 ── */
+  wraps.forEach((w, i) => {
+    w.style.transitionDelay = `${0.35 + i * 0.13}s`;
+  });
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      wraps.forEach(w => w.classList.add('in'));
+    });
+  });
+  setTimeout(() => {
+    wraps.forEach(w => { w.style.transitionDelay = '0ms'; });
+  }, 2200);
+
+  /* ═══════════════════════════════════════════
+     悬停状态 —— 用 JS 类切换 + 90ms 防抖，
+     命中区完全由不变的 .card-wrap 决定，
+     视觉层 pointer-events: none 不参与命中，
+     彻底消除边缘抖动与光标闪烁。
+     ═══════════════════════════════════════════ */
+  wraps.forEach(wrap => {
+    const card = wrap.querySelector('.card');
+    let leaveTimer = null;
+
+    wrap.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'touch') return;
+      clearTimeout(leaveTimer);
+      /* 进入新卡片时立刻清掉其它卡片的 hover，避免短暂双悬停 */
+      wraps.forEach(w => { if (w !== wrap) w.classList.remove('hover'); });
+      wrap.classList.add('hover');
+    });
+
+    wrap.addEventListener('pointerleave', () => {
+      clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(() => wrap.classList.remove('hover'), 90);
+    });
+
+    /* 卡片 3D 倾斜 */
+    wrap.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      const r = wrap.getBoundingClientRect();
+      const px = Math.max(-0.5, Math.min(0.5, (e.clientX - r.left) / r.width  - 0.5));
+      const py = Math.max(-0.5, Math.min(0.5, (e.clientY - r.top)  / r.height - 0.5));
+      card.style.setProperty('--rx', (-py * 9).toFixed(2) + 'deg');
+      card.style.setProperty('--ry', ( px * 9).toFixed(2) + 'deg');
+    });
+
+    wrap.addEventListener('pointerleave', () => {
+      card.style.setProperty('--rx', '0deg');
+      card.style.setProperty('--ry', '0deg');
+    });
+  });
+
+  /* ── 整体 3D 视差 ── */
+  let tx = 0, ty = 0, cx = 0, cy = 0;
+  let bx = 0, by = 0, cbx = 0, cby = 0;
+
+  document.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
+    const nx = (e.clientX / window.innerWidth)  * 2 - 1;
+    const ny = (e.clientY / window.innerHeight) * 2 - 1;
+    tx = ny * -6;
+    ty = nx *  8;
+    bx = nx * -28;
+    by = ny * -28;
+  }, { passive: true });
+
+  window.addEventListener('blur', () => { tx = 0; ty = 0; bx = 0; by = 0; });
+
+  function loop() {
+    cx  += (tx  - cx)  * 0.07;
+    cy  += (ty  - cy)  * 0.07;
+    cbx += (bx  - cbx) * 0.05;
+    cby += (by  - cby) * 0.05;
+
+    stage.style.transform =
+      `rotateX(${cx.toFixed(3)}deg) rotateY(${cy.toFixed(3)}deg)`;
+    bgLight.style.transform =
+      `translate3d(${cbx.toFixed(2)}px, ${cby.toFixed(2)}px, 0)`;
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  /* ── 键盘 1–4 快速跳转 ── */
+  const links = [
+    'https://blockrhapsody.github.io/jishu',
+    'https://blockrhapsody.github.io/tianshu',
+    'https://blockrhapsody.github.io/guang',
+    'https://blockrhapsody.github.io/huxi'
+  ];
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key >= '1' && e.key <= '4') {
+      window.location.href = links[parseInt(e.key, 10) - 1];
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
